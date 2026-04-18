@@ -69,7 +69,7 @@ To deal with this issue, I did that by first changing the data type from text(wh
 
 | Raw Dirty Data(Before) | Processed Clean Data(After)|
 |:---            |:---                 |
-| ![Dirty](images\Power_Query_dirty.png)| ![Processed](images\Cleaned.png)
+| ![Dirty](images/Power_Query_dirty.png)| ![Processed](images/Cleaned.png)
 ## Dashboard Questions Answered
 ### 1. Which Data Roles Are in Demand?
 
@@ -135,7 +135,8 @@ Remote opportunities appear limited in this dataset.
 - Most in-demand Role: Data Engineer
 
 ## Dashboard Preview
-![Dashboard screenshort](images\dashboard.png)
+![Dashboard screenshort](images/dashboard.png)
+
 
 
 ## Business Recommendations
