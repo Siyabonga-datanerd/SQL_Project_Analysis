@@ -1,27 +1,107 @@
 # South Africa Data Roles Job Market Analysis
 ## Introduction
 
-This project analyzes 8,714 South African data job postings, drawn from a large database of Job Postings around the world, to understand:
-- Which data roles are most in demand
-- which cities hire the most
-- whether degrees are commonly required
-- whether remote work is commonly available
-- job postings trends by month
-- which job platforms carry the most opportunities
+**Am I wasting my time learning Data Analysis?**
+That is the question I kept asking when I started transitioning  from humanities to tech. So I pulled `12,642` South African data job postings from a large database of Job Postings collected from `2023` to `2025`, to understand:
+- Which data roles are most in demand?
+- which cities hire the most?
+- whether degrees are commonly required?
+- whether remote work is commonly available?
+- job postings trends by month?
+- which job platforms carry the most opportunities?
+
+## Dashboard Preview
+![Dashboard screenshort](../SQL_Project_Analysis/images/Dashboard_screenshort.png)
+
+## What I found
+### 1. Most in Demand Roles
+
+**finding:**
+- Data Engineer had the highest demand
+- Data scientist followed
+- Data analyst ranked third
+
+**Insight:**
+Engineering-heavy roles appear to dominate the market, and the good thing, Data analyst ranked `top 3`, so entry points exist.
+
+### 2. Monthly Posting Trend
+
+**Finding:**
+- January had the highest activity
+- postings generrally declined through the year
+- August showed a brief spike
+
+**insight:**
+
+Hiring may follow seasonal cycles
+
+### 3. Cities That Hire the Most
+
+**Finding:**
+- In general, Johannesburg dominates
+- Cape Town Follows
+- Pretoria Trails significantly, but can be largely influenced by job title
+
+**Insight:**
+
+Most Opportunities are concentrated in major economic hubs.
+
+### 4. Degree Requirements
+
+**Finding:**
+- Most postings required a degree, however were less `70%` when you didn't account for job type.
+
+**Insight:**
+
+Formal education still appears important in this market, especially on roles like Data Scientist, Senior Data Scientist, and Machine Learning, where over `80%` of the total job postings required a degree. For the remainder, over `30%` of job postings did not mention a degree, signalling you don't need a CS degree for everything. Some campanies hire based on skills and experience alone.
+
+### 5. Is Remote Work an Option?
+
+**Finding:**
+- Most postings were not remote.
+
+**Insight:**
+
+Remote opportunities appear limited in this dataset. Where less than `10%` of job_postings were remote or hybrid, even when you control for job_title.
+
+### 6. Top Platforms
+
+**Finding:**
+- BeBee had the most postings
+- Followed by Linkedin
+
+**Insights**
+-Overall, BeBee was the top plaform for job postings. However, when you considered looking by roles, for Data Analyst roles(both entry and senior level roles), Linkedin was the top platform.
+
+## Key Metrics
+- Total Postings: `12, 642`
+- Top Platform: `BeBee`
+- Top Hiring Location: `Johannesburg`
+- Most in-demand Role: `Data Engineer`
+
+## Key Takeaways
+
+For aspiring data professionals in South Africa:
+1. Focus on Data Engineering, Data Science, and Data Analysts skills.
+2. Look for job opportunities as early as January, as they decline over the year.
+3. Prioritize Johannesburg and Cape Town in Job searches.
+4. Consider degree requirements when planning career entry, or just earn one, though there's still opportunities for non-degree holders.
+5. Target platforms with higher job concentration such as BeBee and Linkedin.
+
 ## Data Cleaning Process
 
 ### The Problem
 
-Before cleanig, the dataset had several issues that would have skewed the analysis.
+Before cleaning, the dataset had several issues that would have skewed the analysis.
 - Null values in critical columns
 - nested schedule types
 - Timeframe Alignemnt
-- Geographic specificity
-- User-Friendly formatting
+- Geographic unspecificity
+- User-Unfriendly formatting
 
 ### SQL Cleanig Path
 
-I used the following query/s to transform the data. By using Split_part functions, i ensured that South Africa is removed from the location, where city is specified and 'via' is removed for readability. I also used TRIM functions and CASE, which helped standardize my data. furthermore, laveraged the power of extract functions together with where clause to filter data to the year 2023, ensuring that a minor data from the previous year do not screw the analysis. finally, used lateral, with string_arrays, and regexp_replace, to sanetize messy text patterns, transform the strings into structured arrays, and specifically used unnest to flatten these arrays into individual raws, allowing me to calculate the true frequency of specifc schedule type across the entire dataset. 
+I used the bellow query/s to transform the data. By using `Split_part` functions, I ensured that South Africa is removed from the location, where city is specified and 'via' is removed for readability. I also used `TRIM` functions and `CASE`, which helped standardize my data. furthermore, laveraged the power of `extract` functions together with where clause to filter data to the year 2023, 2024,and 2025, ensuring that a minor data from the previous year do not screw the analysis. finally, used `lateral`, with `string_arrays`, and `regexp_replace`, to sanetize messy text patterns, transform the strings into structured arrays, and specifically used `unnest` to flatten these arrays into individual raws, allowing me to calculate the true frequency of specifc schedule type across the entire dataset. 
 
 The full SQL script used for data cleaning and analysis is provided below:
 ```sql
@@ -46,112 +126,41 @@ select
     when Extract(month from Job_posted_date) = 10 then 'October'
     when Extract(month from Job_posted_date) = 11 then 'November'
     when Extract(month from Job_posted_date) = 12 then 'December'
-    else 'unknown' --which will help identify data quality issues
+    else 'unknown' --will help identify data quality issues
     end as Month_name,
     job_no_degree_mention
 from job_postings_fact,
 Lateral unnest(string_to_array(regexp_replace(job_schedule_type, '\s+and\s+', ',','gi'), ',')) as schedule
 where job_country = 'South Africa'
-       and Extract( year from job_posted_date) = 2023 --Used to filter 2022 data, which only shows data collected in one day(2022 december 31)
+       and (Extract( year from job_posted_date) = 2023--Used to filter 2022 data, which only shows data collected in one day(2022 december 31) 
+             or  Extract( year from job_posted_date) = 2024
+            or Extract( year from job_posted_date) = 2025)--ensured recent data is included for reliability.
        and split_part(job_location, ',', 1)  <> 'South Africa' 
        and job_schedule_type is not null;
 ```
 
 ### The problem
 
-Upon exporting data from SQL as a CSV to power query for transformations, I stumbled upon some few issues, yet which could have resulted to skewed analysis. 
+Upon exporting data from SQL as a CSV to power query for transformations, I stumbled upon some few issues, yet that could have resulted to the very same skewed analysis I tried to avoid. 
 - null values
 - data types
 
 ### Power Query Cleaning
 
-To deal with this issue, I did that by first changing the data type from text(which the Excel detected and stored as such) to Boolean values(True or false). The nulls turned into 0 and 1's turned into true. I used the replace function to replace 1's with false. Like that the data was ready for analysis, this was one of the crucial steps after so many cleaning processes, that without it, the analysis wouldn't have been possible.
+To deal with this issue, I did that by, first changing the data type from text(which the Excel detected and stored as such) to Boolean values(True or false). The nulls turned into numeric data(0 and 1's),which further allowed me to convert them turned booleans. I used the replace function to replace the numeric values into true and false. Like that the data was ready for analysis, this was one of the crucial steps after so many cleaning processes, that without it, the analysis wouldn't have been possible.
 
 | Raw Dirty Data(Before) | Processed Clean Data(After)|
 |:---            |:---                 |
 | ![Dirty](images/Power_Query_dirty.png)| ![Processed](images/Cleaned.png)
-## Dashboard Questions Answered
-### 1. Which Data Roles Are in Demand?
-
-**finding:**
-- Data Engineer had the highest demand
-- Data scientist followed
-- Data analyst ranked third
-
-**Insight:**
-Engineering-heavy roles appear to dominate the market, and the good thing, Data analyst ranked among the top demanded data roles
-
-### 2. What Is The Monthly Posting Trend?
-
-**Finding:**
-- Jnauary had the highest activity
-- postings generrally declined through the year
-- August showed a brief spike
-
-**insight:**
-
-Hiring may follow seasonalcycles
-
-### 3. Which Cities Hire the Most
-
-**Finding:**
-- In general, Johannesburg dominates
-- Cape Town Follows
-- Pretoria Trails significantly, but can be largely influenced by job title
-
-**Insight:**
-
-Most Opportunities are concentrated in major economic hubs.
-
-### 4. Is a Degree Required?
-
-**Finding:**
-- Most postings required a degree.
-
-**Insight:**
-
-Formal education still appears important in this market.
-
-### 5. Is Remote Work an Option?
-
-**Finding:**
-- Most postings were not remote.
-
-**Insight:**
-
-Remote opportunities appear limited in this dataset.
-
-### 6. Which Platform Has the Most Jobs?
-
-**Finding:**
-- BeBee had the most postings
-- Followed by Linkedin
-- The top platform was subjected to change by the job title
-
-## Key Metrics
-- Total Postings: 8,714
-- Top Platform: BeBee
-- Top Hiring Location: Johannesburg
-- Most in-demand Role: Data Engineer
-
-## Dashboard Preview
-![Dashboard screenshort](images/dashboard.png)
 
 
 
-## Business Recommendations
 
-For aspiring data professionals in South Africa:
-1. Focus on Data Engineering, Data Science, and Data Analysts skills.
-2. Prioritize Johannesburg and Cape Town in Job searches.
-3. Consider degree requirements when planning career entry, or just earn one.
-4. Target platforms with higher job concentration such as BeBee and Linkedin.
-
-## Tools Used
+## Tech Stack
 
 - Power Query(Data Cleaning)
 - Excel(analysis and Dashboarding)
-- SQL(Cleaning)
+- SQL(Cleaning and Pulling Data)
 - Github(Version Control)
 
 ## Conclusion
