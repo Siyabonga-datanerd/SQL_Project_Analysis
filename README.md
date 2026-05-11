@@ -11,7 +11,7 @@ That is the question I kept asking when I started transitioning  from humanities
 - which job platforms carry the most opportunities?
 
 ## Dashboard Preview
-![Dashboard screenshort](../SQL_Project_Analysis/images/Dashboard_screenshort.png)
+![Dashboard screenshort](images/Dashboard_screenshort.png)
 
 ## What I found
 ### 1. Most in Demand Roles
