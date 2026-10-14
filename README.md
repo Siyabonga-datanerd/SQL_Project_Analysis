@@ -1,28 +1,152 @@
-# South Africa Data Roles Job Market Analysis
-## Introduction
+# SOUTH AFRICA TECH MARKET ANALYSIS
 
-**Am I wasting my time learning Data Analysis?**
-That is the question I kept asking when I started transitioning  from humanities to tech. So I pulled `12,642` South African data job postings from a large database of Job Postings collected from `2023` to `2025`, to understand:
-- Which data roles are most in demand?
-- which cities hire the most?
+![Dashboard screenshort](images/image3.png)
+## INTRODUCTION
+
+**Am I wasting time learning data analysis?**
+That is the question I kept asking when I started transitioning  from humanities to tech. If you are switching careers too, you might feel the same.  so i pulle `12` South African data job postings alongside a global benchmark dataset of `700k` Job Postings collected in `2023`, to understand:
+- Which data roles are in demand?
+- which skills are in demand?
 - whether degrees are commonly required?
 - whether remote work is commonly available?
-- job postings trends by month?
+- Job postings trends by month?
 - which job platforms carry the most opportunities?
+- which companies hire the most
+- compensation and salary transparency
 
-## Dashboard Preview
-![Dashboard screenshort](images/Dashboard_screenshort.png)
+## Pulling And Data Cleaning process
+### 1. SQL Script: Data  Extraction & Basic  Cleaning
+
+```sql
+---Create a flat table of job postings facts and company dimension
+CREATE TABLE job_postings_final AS
+SELECT
+jpc.job_id,
+jpc.company_id,
+job_title_short,
+job_location,
+job_via,
+job_schedule_type,
+job_work_from_home,
+job_posted_date,
+job_no_degree_mention,
+job_health_insurance,
+job_country,
+salary_rate,
+salary_year_avg,
+salary_hour_avg,
+month_num,
+month_name,
+salary_adj,
+name
+FROM job_postings_cleaned AS jpc ---use inner join to join on what exists in both tables
+INNER JOIN company_dim_cleaned AS cdc ON jpc.company_id= cdc.company_id;
+
+---create a table of skills
+CREATE TABLE job_skills_final AS
+SELECT
+job_id,
+skills as skill
+FROM skills_job_dim AS sjd ---further use inner join
+INNER JOIN skills_dim AS sd ON sjd.skill_id=sd.skill_id;
+
+---create a new dim table of schedule type
+CREATE TABLE schedule_type_final AS
+SELECT*
+FROM schedule_type_dim;
+```
+
+### 2. Python: Advance Cleaning & Normalization
+```python
+
+#Basic imports
+import pandas as pd
+import numpy as np
+import datetime as dt
+
+#=========================================================================================
+#DATA CLEANING PROCESS
+#=========================================================================================
+
+#Read CSV's from the local storage using pandas
+job_postings_fact= pd.read_csv("C:/temp/job_postings_fact.csv")
+company_dim= pd.read_csv("C:/temp/company_dim.csv")
+skills_job_dim= pd.read_csv("C:/temp/skills_job_dim.csv")
+skills_dim= pd.read_csv("C:/temp/skills_dim.csv")
+
+#functions to organize data cleaning into one place and make it reusable
+
+def clean_fact(df):
+    #Change data types from string object into a datetime object
+    df['job_posted_date']= pd.to_datetime(df['job_posted_date'])
+    #Remove leading "via" and white space ahead of platforms
+    df['job_via']= df['job_via'].str.strip().str.replace('via', "")
+    #Create new columns, month numbers and month names
+    df['month_num']= df['job_posted_date'].dt.month
+    df['month_name']= df['job_posted_date'].dt.strftime("%B")
+    #created a column of adjusted salary, where nulls are filled with the alternative hourly salary, when not null *2080
+    df['salary_adj']= np.where(df['salary_year_avg'].notna(), df['salary_year_avg'],
+    np.where(df['salary_year_avg'].isna() & df['salary_hour_avg'].notna(),
+     df['salary_hour_avg']*2080,np.nan))
+    #Removed null values on specified columns and unneeded columns
+    df= df.dropna(subset=['job_location','job_via','job_schedule_type','job_country',])
+    df= df.drop(columns= ['job_title','search_location'])
+    return(df)
+
+def clean_company(df):
+    #Drop unneeded columns
+    df= df.drop(columns=[ 'link','link_google','thumbnail'])
+    return(df)
+
+def clean_schedule_type(df):
+    #Handling data types
+    df['job_schedule_type']= df['job_schedule_type'].astype(str)
+    #Used regular expressions to find and replace objects
+    df['job_schedule_type']= df['job_schedule_type'].str.replace(r"[\[\]'\"']" , "", regex= True)
+    df['job_schedule_type']= df['job_schedule_type'].str.replace(r"\s+and\s+", ",", regex= True, case= False)
+    #splitted on the specified charecter and exploded it into charecters occupying it own space
+    df['job_schedule_type']= df['job_schedule_type'].str.split(',')
+    schedule_type= df[['job_id','company_id','job_schedule_type']].explode('job_schedule_type')
+    return(schedule_type)
+
+
+job_postings_fact= clean_fact(job_postings_fact)
+schedule_type_dim=clean_schedule_type(job_postings_fact)
+company_dim = clean_company(company_dim)
+```
+
+## DASHBOARD PREVIEW
+*The project consisted of three pages, first showing global benchmark,then deep dive to South Africa Tech market.*
+### Page 1: Global Overiview
+![executive](images/image1.png)
+### Page 2: Compensation Overview
+![Compensation](images/image2.png)
+### Page 3: South Africa Analysis
+![South Africa](images/image3.png)
 
 ## What I found
+
+## Key Metrics
+- Top Platform  : `BeBee (3k)`
+- Schedule Type : `Full-time (12k)`
+- Work-mode     : `Onsite (12k)`
+- Total Postings: `12k`
+
 ### 1. Most in Demand Roles
 
 **finding:**
-- Data Engineer had the highest demand
+- Data Engineer had the highest demand `(3k)`
 - Data scientist followed
 - Data analyst ranked third
 
 **Insight:**
 Engineering-heavy roles appear to dominate the market, and the good thing, Data analyst ranked `top 3`, so entry points exist.
+
+## comparison vs Global:
+
+Globally it's reversed- Data Analyst `192k` is #1, Data Engineer is #2.
+SA is 2-3 years behind- building infrastructure now (needs Engineers), global market is already using it (need Analysts). Target Engineer to be early, or Analyst to enter easily. 
+
 
 ### 2. Monthly Posting Trend
 
@@ -35,133 +159,66 @@ Engineering-heavy roles appear to dominate the market, and the good thing, Data 
 
 Hiring may follow seasonal cycles
 
-### 3. Cities That Hire the Most
+## Comparison vs Global:
+
+Global chart also sjows january peak at `91k` postings, then decline to May, August spike. SA follows global cycle exactly. Strategy: Apply in Deceberand July when hiring managers load jobs for Jan/Aug.
+
+### 3. Companies That Hire the Most
 
 **Finding:**
-- In general, Johannesburg dominates
-- Cape Town Follows
-- Pretoria Trails significantly, but can be largely influenced by job title
+- In general, E-merge dominates
+- Findojobs-za Follows
+- e-merge IT Recruitment trails significantly
 
 **Insight:**
 
-Most Opportunities are concentrated in major economic hubs.
+3 of top 4 are agencies. In SA, you must optimize for agncy ATS keywords - SQL, Full-time, Onsite, Data Engineer.
 
 ### 4. Degree Requirements
 
 **Finding:**
-- Most postings required a degree, however were less `70%` when you didn't account for job type.
+- `31%` job postings did not require a degree, when we did not account for job type.
 
 **Insight:**
 
 Formal education still appears important in this market, especially on roles like Data Scientist, Senior Data Scientist, and Machine Learning, where over `80%` of the total job postings required a degree. For the remainder, over `30%` of job postings did not mention a degree, signalling you don't need a CS degree for everything. Some campanies hire based on skills and experience alone.
 
-### 5. Is Remote Work an Option?
+### 5. Most demanded skills?
 
 **Finding:**
-- Most postings were not remote.
+- SQL was the most demanded skills `(7k)`.
+- Python followed.
+- Azure trailed third.
+
+**Insight:**
+ For SA, SQL is non-negotiable. `7k` of the `12` require it.
+
+### 6. Salary Transparency(ST).
+
+**Finding:**
+- South Africa ST : `(2%)`.
+- United States ST: `(26%)`.
+- Global ST       : `(4%)`.
 
 **Insight:**
 
-Remote opportunities appear limited in this dataset. Where less than `10%` of job_postings were remote or hybrid, even when you control for job_title.
+Not only South African companies do not show salary, `4%` of the data fields in the entire dataset had salary shown, compared to `26%` of the USA data (being the highest, which is still low relative to the size of the dataset), signaling a global salary transparency issue.
 
-### 6. Top Platforms
-
-**Finding:**
-- BeBee had the most postings
-- Followed by Linkedin
-
-**Insights**
--Overall, BeBee was the top plaform for job postings. However, when you considered looking by roles, for Data Analyst roles(both entry and senior level roles), Linkedin was the top platform.
-
-## Key Metrics
-- Total Postings: `12, 642`
-- Top Platform: `BeBee`
-- Top Hiring Location: `Johannesburg`
-- Most in-demand Role: `Data Engineer`
-
+*NB: this is the main reason i did not focus compensation analysis on South Africa and included global compensation over view for broader picture about salary expectations*
 ## Key Takeaways
 
 For aspiring data professionals in South Africa:
 1. Focus on Data Engineering, Data Science, and Data Analysts skills.
 2. Look for job opportunities as early as January, as they decline over the year.
-3. Prioritize Johannesburg and Cape Town in Job searches.
+3. Prioritize direct job search in agencies like E-merge.
 4. Consider degree requirements when planning career entry, or just earn one, though there's still opportunities for non-degree holders.
-5. Target platforms with higher job concentration such as BeBee and Linkedin.
-
-## Data Cleaning Process
-
-### The Problem
-
-Before cleaning, the dataset had several issues that would have skewed the analysis.
-- Null values in critical columns
-- nested schedule types
-- Timeframe Alignemnt
-- Geographic unspecificity
-- User-Unfriendly formatting
-
-### SQL Cleanig Path
-
-I used the bellow query/s to transform the data. By using `Split_part` functions, I ensured that South Africa is removed from the location, where city is specified and 'via' is removed for readability. I also used `TRIM` functions and `CASE`, which helped standardize my data. furthermore, laveraged the power of `extract` functions together with where clause to filter data to the year 2023, 2024,and 2025, ensuring that a minor data from the previous year do not screw the analysis. finally, used `lateral`, with `string_arrays`, and `regexp_replace`, to sanetize messy text patterns, transform the strings into structured arrays, and specifically used `unnest` to flatten these arrays into individual raws, allowing me to calculate the true frequency of specifc schedule type across the entire dataset. 
-
-The full SQL script used for data cleaning and analysis is provided below:
-```sql
-select
-    job_id,
-    job_title_short,
-    split_part(job_location, ',', 1) as Job_location_city,--removes South Africa, where city is specified
-    Split_part(Job_via, ' ',2) as Job_via,--removes repetitve 'via' word
-    Trim(schedule) as Job_schedule_type,
-    job_work_from_home,
-    Job_posted_date,
-    CASE
-    when Extract(month from Job_posted_date) = 1 then 'January'
-    when Extract(month from Job_posted_date) = 2 then 'February'
-    when Extract(month from Job_posted_date) = 3 then 'March'
-    when Extract(month from Job_posted_date) = 4 then 'April'
-    when Extract(month from Job_posted_date) = 5 then 'May'
-    when Extract(month from Job_posted_date) = 6 then 'June'
-    when Extract(month from Job_posted_date) = 7 then 'July'
-    when Extract(month from Job_posted_date) = 8 then 'August'
-    when Extract(month from Job_posted_date) = 9 then 'September'
-    when Extract(month from Job_posted_date) = 10 then 'October'
-    when Extract(month from Job_posted_date) = 11 then 'November'
-    when Extract(month from Job_posted_date) = 12 then 'December'
-    else 'unknown' --will help identify data quality issues
-    end as Month_name,
-    job_no_degree_mention
-from job_postings_fact,
-Lateral unnest(string_to_array(regexp_replace(job_schedule_type, '\s+and\s+', ',','gi'), ',')) as schedule
-where job_country = 'South Africa'
-       and (Extract( year from job_posted_date) = 2023--Used to filter 2022 data, which only shows data collected in one day(2022 december 31) 
-             or  Extract( year from job_posted_date) = 2024
-            or Extract( year from job_posted_date) = 2025)--ensured recent data is included for reliability.
-       and split_part(job_location, ',', 1)  <> 'South Africa' 
-       and job_schedule_type is not null;
-```
-
-### The problem
-
-Upon exporting data from SQL as a CSV to power query for transformations, I stumbled upon some few issues, yet that could have resulted to the very same skewed analysis I tried to avoid. 
-- null values
-- data types
-
-### Power Query Cleaning
-
-To deal with this issue, I did that by, first changing the data type from text(which the Excel detected and stored as such) to Boolean values(True or false). The nulls turned into numeric data(0 and 1's),which further allowed me to convert them turned booleans. I used the replace function to replace the numeric values into true and false. Like that the data was ready for analysis, this was one of the crucial steps after so many cleaning processes, that without it, the analysis wouldn't have been possible.
-
-| Raw Dirty Data(Before) | Processed Clean Data(After)|
-|:---            |:---                 |
-| ![Dirty](images/Power_Query_dirty.png)| ![Processed](images/Cleaned.png)
-
-
-
+5. Ensure proficiency in skills like SQL.
 
 ## Tech Stack
 
-- Power Query(Data Cleaning)
-- Excel(analysis and Dashboarding)
-- SQL(Cleaning and Pulling Data)
-- Github(Version Control)
+- **SQL- Basic Cleaning**
+- **Python- Advance Cleaning**
+- **Power BI- Data Visualization**
 
 ## Conclusion
 
